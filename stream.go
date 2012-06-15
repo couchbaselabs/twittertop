@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -114,10 +115,24 @@ func openStream(path string) io.Reader {
 	panic("Unreachable")
 }
 
+func usage() {
+	fmt.Fprintf(os.Stderr, "Usage: %s [flags] src\n", os.Args[0])
+	flag.PrintDefaults()
+	fmt.Fprintf(os.Stderr, "\nsrc can be a path to a local file, or a URL, e.g.\n")
+	fmt.Fprintf(os.Stderr, "  https://user:pass@stream.twitter.com/1/statuses/sample.json\n")
+	os.Exit(1)
+}
+
 func main() {
 	log.SetFlags(log.Lmicroseconds)
 
+	flag.Usage = usage
+
 	flag.Parse()
+
+	if flag.NArg() < 1 {
+		usage()
+	}
 
 	listenerChans := make([]chan string, *numWorkers)
 	for i := 0; i < *numWorkers; i++ {
