@@ -7,8 +7,6 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
-
-	"github.com/dustin/gomemcached/client"
 )
 
 func removeBottom(r *ranks) {
@@ -70,8 +68,8 @@ func makeRanks(candidates map[string]uint64) ranks {
 	return rv
 }
 
-func updateList(client *memcached.Client, prefix string, totals map[string]uint64) {
-	_, err := client.CAS(0, lPrefix+prefix,
+func updateList(client persister, prefix string, totals map[string]uint64) {
+	_, err := client.CAS(lPrefix+prefix,
 		func(oldBody []byte) []byte {
 			if len(oldBody) == 0 {
 				b, err := json.Marshal(totals)
@@ -96,7 +94,7 @@ func updateList(client *memcached.Client, prefix string, totals map[string]uint6
 				keys = append(keys, cPrefix+prefix+k)
 			}
 
-			m, err := client.GetBulk(0, keys)
+			m, err := client.GetBulk(keys)
 			if err != nil {
 				log.Fatalf("Error getting %v: %v", keys, err)
 			}
@@ -125,7 +123,7 @@ func updateList(client *memcached.Client, prefix string, totals map[string]uint6
 	}
 }
 
-func process(client *memcached.Client, prefix string, t *Tweet) {
+func process(client persister, prefix string, t *Tweet) {
 	parts := strings.FieldsFunc(strings.ToLower(t.Text), func(r rune) bool {
 		return !(unicode.IsLetter(r) || r == '\'')
 	})
@@ -139,13 +137,13 @@ func process(client *memcached.Client, prefix string, t *Tweet) {
 	for w, count := range counts {
 		k := cPrefix + prefix + w
 		var err error
-		totals[w], err = client.Incr(0, k, count, 1,
+		totals[w], err = client.Incr(k, count, 1,
 			10*int(windowSize.Seconds()))
 		if err != nil {
 			log.Fatalf("Error incrementing %v: %v", k, err)
 		}
 		if *foreverWords {
-			_, err = client.Incr(0, cPrefix+w, count, 1, 0)
+			_, err = client.Incr(cPrefix+w, count, 1, 0)
 		}
 	}
 	updateList(client, prefix, totals)

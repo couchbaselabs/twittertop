@@ -7,21 +7,19 @@ import (
 	"os"
 	"sort"
 	"text/tabwriter"
-
-	"github.com/dustin/gomemcached/client"
 )
 
 func report(prefix string) {
 	log.Printf("Reporting on %v", prefix)
 
-	client, err := memcached.Connect("tcp", *mcServer)
+	client, err := getPersister(*mcServer)
 	if err != nil {
-		log.Printf("Error connecting to memcached:  %v", err)
+		log.Printf("Error connecting to persister:  %v", err)
 		return
 	}
 	defer client.Close()
 
-	resp, err := client.Get(0, lPrefix+prefix)
+	resp, err := client.Get(lPrefix + prefix)
 	if err != nil {
 		log.Printf("Error reporting on %s:  %v", prefix, err)
 		return

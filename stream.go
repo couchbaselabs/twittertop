@@ -11,8 +11,6 @@ import (
 	"os"
 	"strings"
 	"time"
-
-	"github.com/dustin/gomemcached/client"
 )
 
 type Tweet struct {
@@ -45,9 +43,9 @@ func parseNext(d *json.Decoder) (rv Tweet, err error) {
 }
 
 func handle(ch <-chan Tweet, pch <-chan string) {
-	client, err := memcached.Connect("tcp", *mcServer)
+	client, err := getPersister(*mcServer)
 	if err != nil {
-		log.Fatalf("Error connecting to memcached:  %v", err)
+		log.Fatalf("Error getting persister:  %v", err)
 	}
 	defer client.Close()
 	prefix := ""
