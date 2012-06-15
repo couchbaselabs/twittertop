@@ -87,30 +87,31 @@ func moveTime(listeners []chan string) {
 	}
 }
 
-func openStream(path string) io.Reader {
+func openStream(path string) (io.ReadCloser, error) {
 	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
 		req, err := http.NewRequest("GET", path, nil)
 		if err != nil {
-			log.Printf("Error making request:  %v", err)
+			return nil, err
 		}
 		req.Header.Set("Accept-Encoding", "gzip")
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
-			log.Fatalf("Error doing request: %v", err)
+			return nil, err
 		}
 
 		gz, err := gzip.NewReader(resp.Body)
 		if err != nil {
-			log.Fatalf("Error initializing gzip stream: %v", err)
+			resp.Body.Close()
+			return nil, err
 		}
 
-		return gz
+		return gz, nil
 	} else {
 		f, err := os.Open(path)
 		if err != nil {
-			log.Fatalf("Error opening recorded file: %v", err)
+			return nil, err
 		}
-		return f
+		return f, nil
 	}
 	panic("Unreachable")
 }
@@ -121,6 +122,40 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "\nsrc can be a path to a local file, or a URL, e.g.\n")
 	fmt.Fprintf(os.Stderr, "  https://user:pass@stream.twitter.com/1/statuses/sample.json\n")
 	os.Exit(1)
+}
+
+func streamTo(path string, ch chan<- Tweet) {
+	stream, err := openStream(path)
+	if err != nil {
+		log.Printf("Error opening stream: %v", err)
+		return
+	}
+	defer stream.Close()
+	var r io.Reader = stream
+	if *recordTo != "" {
+		f, err := os.OpenFile(*recordTo,
+			os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+		if err != nil {
+			log.Printf("Error opening output stream: %v", err)
+			return
+		}
+		defer f.Close()
+		r = io.TeeReader(stream, f)
+	}
+
+	d := json.NewDecoder(r)
+
+	for {
+		tweet, err := parseNext(d)
+		if err != nil {
+			log.Printf("Error in stream: %v", err)
+			return
+		}
+
+		for i := 0; i < *multiplier; i++ {
+			ch <- tweet
+		}
+	}
 }
 
 func main() {
@@ -147,26 +182,14 @@ func main() {
 		go handle(ch, lch)
 	}
 
-	stream := openStream(flag.Arg(0))
-	if *recordTo != "" {
-		f, err := os.Create(*recordTo)
-		if err != nil {
-			log.Fatalf("Error opening output stream: %v", err)
-		}
-		defer f.Close()
-		stream = io.TeeReader(stream, f)
-	}
-
-	d := json.NewDecoder(stream)
-
 	for {
-		tweet, err := parseNext(d)
-		if err != nil {
-			log.Fatalf("Got an error: %v", err)
+		start := time.Now()
+		streamTo(flag.Arg(0), ch)
+		if time.Since(start).Seconds() < 5 {
+			log.Printf("Crashed in %v, slowing down",
+				time.Since(start))
+			time.Sleep(time.Second * 5)
 		}
-
-		for i := 0; i < *multiplier; i++ {
-			ch <- tweet
-		}
+		log.Printf("Restarting stream")
 	}
 }
