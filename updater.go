@@ -144,6 +144,9 @@ func process(client *memcached.Client, prefix string, t *Tweet) {
 		if err != nil {
 			log.Fatalf("Error incrementing %v: %v", k, err)
 		}
+		if *foreverWords {
+			_, err = client.Incr(0, cPrefix+w, count, 1, 0)
+		}
 	}
 	updateList(client, prefix, totals)
 }

@@ -37,6 +37,7 @@ var recordTo = flag.String("record", "", "Record the stream to a file")
 var multiplier = flag.Int("multiplier", 1, "Tweet multiplier")
 var mcServer = flag.String("memcached", "localhost:11211",
 	"host:port of your memcached server")
+var foreverWords = flag.Bool("forever", false, "Keep \"forever\" counters")
 
 func parseNext(d *json.Decoder) (rv Tweet, err error) {
 	err = d.Decode(&rv)
