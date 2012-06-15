@@ -29,9 +29,7 @@ const max_word_len = 32
 
 const listSuffix = "-list"
 
-var windowSize time.Duration
-
-var durFlag = flag.String("interval", "30s", "Reporting interval")
+var windowSize = flag.Duration("interval", time.Second*30, "Reporting interval")
 var numWorkers = flag.Int("workers", 8, "Number of workers")
 var recordTo = flag.String("record", "", "Record the stream to a file")
 var multiplier = flag.Int("multiplier", 1, "Tweet multiplier")
@@ -82,7 +80,7 @@ func moveTime(listeners []chan string) {
 			report(oldPrefix)
 		}
 
-		next := time.Unix(t, 0).Add(windowSize)
+		next := time.Unix(t, 0).Add(*windowSize)
 		toSleep := next.Sub(time.Now())
 		time.Sleep(toSleep)
 	}
@@ -120,11 +118,6 @@ func main() {
 	log.SetFlags(log.Lmicroseconds)
 
 	flag.Parse()
-	var err error
-	windowSize, err = time.ParseDuration(*durFlag)
-	if err != nil {
-		log.Fatalf("Error parsing window size: %v", err)
-	}
 
 	listenerChans := make([]chan string, *numWorkers)
 	for i := 0; i < *numWorkers; i++ {
