@@ -112,7 +112,14 @@ func openStream(path string) (io.ReadCloser, error) {
 		if err != nil {
 			return nil, err
 		}
-		return f, nil
+
+		gz, err := gzip.NewReader(f)
+		if err != nil {
+			f.Close()
+			return nil, err
+		}
+
+		return gz, nil
 	}
 	panic("Unreachable")
 }
