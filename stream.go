@@ -25,10 +25,11 @@ type Tweet struct {
 
 const qtimeFormat = "150405:"
 const ptimeFormat = "20060102T150405"
+const cPrefix = "c:"
+const lPrefix = "l:"
+
 const max_entries = 1000
 const max_word_len = 32
-
-const listSuffix = "-list"
 
 var windowSize = flag.Duration("interval", time.Second*30, "Reporting interval")
 var numWorkers = flag.Int("workers", 8, "Number of workers")

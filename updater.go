@@ -51,7 +51,7 @@ func (r *ranks) updateKeys() {
 func (r ranks) MarshalJSON() ([]byte, error) {
 	m := map[string]uint64{}
 	for k, v := range r.counts {
-		m[k[len(qtimeFormat):]] = v
+		m[k] = v
 	}
 	return json.Marshal(m)
 }
@@ -71,7 +71,7 @@ func makeRanks(candidates map[string]uint64) ranks {
 }
 
 func updateList(client *memcached.Client, prefix string, totals map[string]uint64) {
-	_, err := client.CAS(0, prefix+listSuffix,
+	_, err := client.CAS(0, lPrefix+prefix,
 		func(oldBody []byte) []byte {
 			if len(oldBody) == 0 {
 				b, err := json.Marshal(totals)
@@ -93,7 +93,7 @@ func updateList(client *memcached.Client, prefix string, totals map[string]uint6
 
 			keys := make([]string, 0, len(topKeys))
 			for k := range topKeys {
-				keys = append(keys, prefix+k)
+				keys = append(keys, cPrefix+prefix+k)
 			}
 
 			m, err := client.GetBulk(0, keys)
@@ -107,7 +107,7 @@ func updateList(client *memcached.Client, prefix string, totals map[string]uint6
 				if err != nil {
 					log.Fatalf("Error parsing %#v: %v", resp, err)
 				}
-				candidates[k] = v
+				candidates[k[len(cPrefix+prefix):]] = v
 			}
 
 			r := makeRanks(candidates)
@@ -137,7 +137,7 @@ func process(client *memcached.Client, prefix string, t *Tweet) {
 	}
 	totals := map[string]uint64{}
 	for w, count := range counts {
-		k := prefix + w
+		k := cPrefix + prefix + w
 		var err error
 		totals[w], err = client.Incr(0, k, count, 1,
 			10*int(windowSize.Seconds()))

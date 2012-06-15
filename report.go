@@ -21,7 +21,7 @@ func report(prefix string) {
 	}
 	defer client.Close()
 
-	resp, err := client.Get(0, prefix+listSuffix)
+	resp, err := client.Get(0, lPrefix+prefix)
 	if err != nil {
 		log.Printf("Error reporting on %s:  %v", prefix, err)
 		return
