@@ -172,8 +172,11 @@ func main() {
 
 	flag.Parse()
 
+	var streamPath string
 	if flag.NArg() < 1 {
 		usage()
+	} else {
+		streamPath = flag.Arg(0)
 	}
 
 	listenerChans := make([]chan string, *numWorkers)
@@ -191,7 +194,7 @@ func main() {
 
 	for {
 		start := time.Now()
-		streamTo(flag.Arg(0), ch)
+		streamTo(streamPath, ch)
 		if time.Since(start).Seconds() < 5 {
 			log.Printf("Crashed in %v, slowing down",
 				time.Since(start))
