@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/dustin/gomemcached/client"
 )
 
 func removeBottom(r *ranks) {
@@ -70,13 +72,13 @@ func makeRanks(candidates map[string]uint64) ranks {
 
 func updateList(client persister, prefix string, totals map[string]uint64) {
 	_, err := client.CAS(lPrefix+prefix,
-		func(oldBody []byte) []byte {
+		func(oldBody []byte) ([]byte, memcached.CasOp) {
 			if len(oldBody) == 0 {
 				b, err := json.Marshal(totals)
 				if err != nil {
 					log.Fatalf("Error marshaling keys: %v", err)
 				}
-				return b
+				return b, memcached.CASStore
 			}
 			topKeys := map[string]uint64{}
 			err := json.Unmarshal(oldBody, &topKeys)
@@ -116,7 +118,7 @@ func updateList(client persister, prefix string, totals map[string]uint64) {
 			if err != nil {
 				log.Fatalf("Error marshaling %v: %v", m, err)
 			}
-			return b
+			return b, memcached.CASStore
 		}, int(windowSize.Seconds()))
 	if err != nil {
 		log.Panicf("Error CASing in a new list: %v", err)
